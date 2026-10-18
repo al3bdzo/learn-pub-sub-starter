@@ -42,6 +42,23 @@ func main() {
 		log.Fatal(err)
 	}
 
+	err = pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
+		pubsub.SimpleQueueTransient,
+		handlerMove(gameState),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	for {
 		userInput := gamelogic.GetInput()
 		if len(userInput) == 0 {
@@ -56,7 +73,17 @@ func main() {
 				continue
 			}
 		case "move":
-			_, err = gameState.CommandMove(userInput)
+			move, err := gameState.CommandMove(userInput)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			err = pubsub.PublishJSON(
+				ch,
+				routing.ExchangePerilTopic,
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+				move,
+			)
 			if err != nil {
 				fmt.Println(err)
 				continue
