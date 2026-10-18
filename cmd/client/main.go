@@ -29,19 +29,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	_, queue, err := pubsub.DeclareAndBind(
+	gameState := gamelogic.NewGameState(username)
+	err = pubsub.SubscribeJSON(
 		conn, 
 		routing.ExchangePerilDirect, 
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
 		pubsub.SimpleQueueTransient,
+		handlerPause(gameState),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
-	gameState := gamelogic.NewGameState(username)
 	for {
 		userInput := gamelogic.GetInput()
 		if len(userInput) == 0 {
@@ -81,3 +81,5 @@ func main() {
 		fmt.Println("Client is shutting down!")
 	}
 }
+
+

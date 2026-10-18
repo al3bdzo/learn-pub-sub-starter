@@ -28,6 +28,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	_, queue, err := pubsub.DeclareAndBind(
+		conn, 
+		routing.ExchangePerilTopic, 
+		routing.GameLogSlug,
+		fmt.Sprintf("%s.*", routing.GameLogSlug),
+		pubsub.SimpleQueueDurable,
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
+
 	gamelogic.PrintServerHelp()
 
 	for {
