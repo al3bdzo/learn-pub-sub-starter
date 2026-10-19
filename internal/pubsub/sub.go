@@ -2,6 +2,8 @@ package pubsub
 
 import (
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
+
 	"encoding/json"
 	"fmt"
 )
@@ -33,13 +35,15 @@ func DeclareAndBind(
 		return nil, amqp.Queue{}, err
 	}
 
+	table := amqp.NewConnectionProperties()
+	table["x-dead-letter-exchange"] = routing.ExchangeDeadLetter
 	queue, err := ch.QueueDeclare(
 		queueName,
 		queueType == SimpleQueueDurable, 
 		queueType != SimpleQueueDurable,
 		queueType != SimpleQueueDurable,
 		false, 
-		nil,
+		table,
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, err
@@ -95,7 +99,6 @@ func SubscribeJSON[T any](
 				delivery.Nack(false, true)
 				fmt.Println("NackRequeue")
 			}
-
 			
 		}
 	}()
