@@ -42,19 +42,31 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
 		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
 		fmt.Sprintf("%s.*", routing.ArmyMovesPrefix),
 		pubsub.SimpleQueueTransient,
-		handlerMove(gameState),
+		handlerMove(gameState, ch),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ch, err := conn.Channel()
+	err = pubsub.SubscribeJSON(
+		conn, 
+		routing.ExchangePerilTopic, 
+		routing.WarRecognitionsPrefix,
+		fmt.Sprintf("%s.*", routing.WarRecognitionsPrefix),
+		pubsub.SimpleQueueDurable,
+		handlerWar(gameState),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
