@@ -28,17 +28,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	_, queue, err := pubsub.DeclareAndBind(
+	err = pubsub.SubscribeGOB(
 		conn, 
 		routing.ExchangePerilTopic, 
 		routing.GameLogSlug,
 		fmt.Sprintf("%s.*", routing.GameLogSlug),
 		pubsub.SimpleQueueDurable,
+		handlerLog(),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	gamelogic.PrintServerHelp()
 
