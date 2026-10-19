@@ -7,7 +7,7 @@ import (
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 
-
+	"time"
 	"fmt"
 )
 
@@ -43,29 +43,67 @@ func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyM
 				fmt.Printf("error: %s\n", err)
 				return pubsub.NackRequeue
 			}
-			return pubsub.NackRequeue
+			return pubsub.Ack
 		}
 		return pubsub.NackDiscard
 	}
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
+func handlerWar(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.Acktype {
 	return func(message gamelogic.RecognitionOfWar) pubsub.Acktype {
 		defer fmt.Print("> ")
-		outCome, _, _ := gs.HandleWar(message)
+		outCome, winner, loser := gs.HandleWar(message)
+
 		switch(outCome) {
 		case gamelogic.WarOutcomeNotInvolved:
 			return pubsub.NackRequeue
+
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
-		case gamelogic.WarOutcomeOpponentWon:
+
+		case gamelogic.WarOutcomeOpponentWon, gamelogic.WarOutcomeYouWon:
+			err := publishGameLog(
+				ch, 
+				fmt.Sprintf("%s won a war against %s", winner, loser, winner, loser), 
+				gs.GetUsername(),
+			)
+			if err != nil {
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
-		case gamelogic.WarOutcomeYouWon:
-			return pubsub.Ack
+
 		case gamelogic.WarOutcomeDraw:
+			err := publishGameLog(
+				ch, 
+				fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser), 
+				gs.GetUsername(),
+			)
+			if err != nil {
+				return pubsub.NackRequeue
+			}
 			return pubsub.Ack
+
 		}
+
 		fmt.Println("What the hell happened in this war!")
 		return pubsub.NackDiscard
 	}
+}
+
+
+func publishGameLog(ch *amqp.Channel, message, username string) error {
+	err := pubsub.PublishGOB(
+		ch,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", routing.GameLogSlug, username),
+		routing.GameLog{
+			CurrentTime: time.Now(),
+			Message: message,
+			Username: username,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
