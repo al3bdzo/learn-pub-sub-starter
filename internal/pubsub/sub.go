@@ -38,6 +38,11 @@ func Subscribe[T any](
 		return err
 	}
 
+	err = ch.Qos(10, 0, false)
+	if err != nil {
+		return err
+	}
+	
 	deliveries, err := ch.Consume(queue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return err

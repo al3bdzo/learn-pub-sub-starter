@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"log"
 	"fmt"
+	"strconv"
+	"time"
 )
 
 func main() {
@@ -105,7 +107,32 @@ func main() {
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "spam":
-			fmt.Println("Spamming is not allowed yet!")
+			if len(userInput) != 2 {
+				fmt.Println("Usage: spam <number_of_spams>")
+				continue
+			}
+			num, err := strconv.Atoi(userInput[1])
+			if err != nil {
+				fmt.Println("Usage: spam <number_of_spams>")
+				continue
+			}
+			for i := 0; i < num; i++ {
+				spam := gamelogic.GetMaliciousLog()
+				err = pubsub.PublishGOB(
+					ch, 
+					routing.ExchangePerilTopic,
+					fmt.Sprintf("%s.%s", routing.GameLogSlug, gameState.GetUsername()),
+					routing.GameLog{
+						CurrentTime: time.Now(),
+						Message: spam,
+						Username: gameState.GetUsername(),
+					},
+				)
+				if err != nil {
+					fmt.Println("couldn't spam for some reason!")
+					continue
+				}
+			}
 		case "quit":
 			gamelogic.PrintQuit()
 			return 
